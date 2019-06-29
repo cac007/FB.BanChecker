@@ -42,13 +42,24 @@ namespace FB.BanChecker
             var msg = new StringBuilder();
             foreach (var c in campaignsToMonitor)
             {
-                var request = new RestRequest($"{c}/insights", Method.GET);
+                //Сначала чекаем, есть ли работающие адсеты в кампании!
+                var request = new RestRequest($"{c}/adsets", Method.GET);
+                request.AddQueryParameter("access_token", accessToken);
+                request.AddQueryParameter("date_preset", "today");
+                request.AddQueryParameter("fields", "status");
+                var response = restClient.Execute(request);
+                var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                if (json["data"].All(adset=>adset["status"].ToString()=="PAUSED"))
+                    continue;
+                
+                //Нашли кампанию с работающими адсетами, проверяем показы
+                request = new RestRequest($"{c}/insights", Method.GET);
                 request.AddQueryParameter("access_token", accessToken);
                 request.AddQueryParameter("date_preset", "today");
                 request.AddQueryParameter("fields", "impressions,account_name,campaign_name");
 
-                var response = restClient.Execute(request);
-                var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                response = restClient.Execute(request);
+                json = (JObject)JsonConvert.DeserializeObject(response.Content);
                 var accName = json["data"][0]["account_name"].ToString();
                 var campaignName = json["data"][0]["campaign_name"].ToString();
                 var imp = int.Parse(json["data"][0]["impressions"].ToString());
