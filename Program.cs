@@ -25,6 +25,8 @@ namespace FB.BanChecker
                 FreezeChecker.Check(apiAddress, accessToken);
             if(config.GetValue<bool>("check_ads"))
                 AdsChecker.Check(apiAddress,accessToken);
+            if (config.GetValue<bool>("check_pages"))
+                PagesChecker.Check(apiAddress, accessToken);
         }
     }
 }

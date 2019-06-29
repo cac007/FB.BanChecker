@@ -4,6 +4,7 @@ using RestSharp;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace FB.BanChecker
 {
@@ -38,6 +39,7 @@ namespace FB.BanChecker
             }
 
             //Во всех работающих кампаниях получаем кол-во показов
+            var msg = new StringBuilder();
             foreach (var c in campaignsToMonitor)
             {
                 var request = new RestRequest($"{c}/insights", Method.GET);
@@ -58,9 +60,9 @@ namespace FB.BanChecker
                     else
                     {
                         //ФРИЗ! Шлём уведомление об этом!
-                        var msg = $"Фриз кампании {campaignName} в аккаунте {accName}!";
-                        Logger.Log(msg);
-                        new Mailer().SendEmailNotification(msg, "Subj!");
+                        var freezeMsg = $"Фриз кампании {campaignName} в аккаунте {accName}!";
+                        msg.AppendLine(freezeMsg);
+                        Logger.Log(freezeMsg);
                     }
                 }
                 else
@@ -68,6 +70,10 @@ namespace FB.BanChecker
                     campaignImpressions.Add(c, imp);
                 }
             }
+
+            //Шлём одно письмо по всем фризам
+            if (msg.Length > 0)
+                new Mailer().SendEmailNotification("Обнаружен ФРИЗ кампаний!", msg.ToString());
 
             //Записываем все полученные кол-ва показов в "базу"
             File.Delete(ciFileName);
