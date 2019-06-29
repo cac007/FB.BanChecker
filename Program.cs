@@ -19,10 +19,12 @@ namespace FB.BanChecker
                 Console.WriteLine("Не указан access_token!");
                 return;
             }
-
-            DomainsChecker.Check(apiAddress, accessToken);
-            FreezeChecker.Check(apiAddress, accessToken);
-            AdsChecker.Check(apiAddress,accessToken);
+            if(config.GetValue<bool>("check_domains"))
+                DomainsChecker.Check(apiAddress, accessToken);
+            if(config.GetValue<bool>("check_freeze"))
+                FreezeChecker.Check(apiAddress, accessToken);
+            if(config.GetValue<bool>("check_ads"))
+                AdsChecker.Check(apiAddress,accessToken);
         }
     }
 }

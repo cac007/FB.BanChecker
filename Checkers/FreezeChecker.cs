@@ -40,16 +40,16 @@ namespace FB.BanChecker
             //Во всех работающих кампаниях получаем кол-во показов
             foreach (var c in campaignsToMonitor)
             {
-                var request = new RestRequest($"{c}", Method.GET);
+                var request = new RestRequest($"{c}/insights", Method.GET);
                 request.AddQueryParameter("access_token", accessToken);
                 request.AddQueryParameter("date_preset", "today");
-                request.AddQueryParameter("fields", "insights{impressions,account_name,campaign_name}");
+                request.AddQueryParameter("fields", "impressions,account_name,campaign_name");
 
                 var response = restClient.Execute(request);
                 var json = (JObject)JsonConvert.DeserializeObject(response.Content);
-                var accName = json["insights"]["data"][0]["account_name"].ToString();
-                var campaignName = json["insights"]["data"][0]["campaign_name"].ToString();
-                var imp = int.Parse(json["insights"]["data"][0]["impressions"].ToString());
+                var accName = json["data"][0]["account_name"].ToString();
+                var campaignName = json["data"][0]["campaign_name"].ToString();
+                var imp = int.Parse(json["data"][0]["impressions"].ToString());
                 //если уже получали кол-во показов у этой кампании
                 if (campaignImpressions.ContainsKey(c))
                 {
