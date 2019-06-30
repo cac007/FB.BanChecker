@@ -67,7 +67,10 @@ namespace FB.BanChecker
                 if (campaignImpressions.ContainsKey(c))
                 {
                     if (campaignImpressions[c] != imp)
+                    {
                         campaignImpressions[c] = imp;
+                        Logger.Log($"Кампания {campaignName} крутит, всё с ней хорошо!");
+                    }
                     else
                     {
                         //ФРИЗ! Шлём уведомление об этом!

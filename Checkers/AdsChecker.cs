@@ -30,8 +30,7 @@ namespace FB.BanChecker
             }
 
             //Во всех работающих кампаниях получаем инфу по всем объявам
-            var adIds = new HashSet<string>();
-            var msg=new StringBuilder();
+            var msg = new StringBuilder();
             foreach (var c in campaignsToMonitor)
             {
                 var request = new RestRequest($"{c}/ads", Method.GET);
@@ -42,7 +41,7 @@ namespace FB.BanChecker
                 var json = (JObject)JsonConvert.DeserializeObject(response.Content);
                 foreach (var ad in json["data"])
                 {
-                    var status= ad["effective_status"].ToString();
+                    var status = ad["effective_status"].ToString();
                     if (status == "DISAPPROVED")
                     {
                         msg.AppendLine($"Объявление из кампании {ad["campaign"]["name"]} аккаунта {ad["account_id"]} перешло в статус DISAPPROVED");
@@ -53,11 +52,12 @@ namespace FB.BanChecker
 
                     }
                 }
+                Logger.Log($"Проверили все объявы в кампании {c}.");
             }
-            if (msg.Length>0)
+            if (msg.Length > 0)
             {
                 Logger.Log(msg.ToString());
-                new Mailer().SendEmailNotification("Некорректный статус у объявлений!",msg.ToString());
+                new Mailer().SendEmailNotification("Некорректный статус у объявлений!", msg.ToString());
             }
         }
 

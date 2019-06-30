@@ -30,7 +30,10 @@ namespace FB.BanChecker
                 if (!pages.Contains(p["id"].ToString()) && !pages.Contains(p["name"].ToString()))
                     continue;
                 if (bool.Parse(p["is_published"].ToString()))
+                {
+                    Logger.Log($"Страница {p["name"]} не снята с публикации, ол гут!");
                     continue;
+                }
 
                 //Страница не опубликована! Пытаемся опубликовать
                 request = new RestRequest(p["id"].ToString(), Method.POST);
