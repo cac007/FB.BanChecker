@@ -90,8 +90,7 @@ namespace FB.BanChecker
                 new Mailer().SendEmailNotification("Обнаружен ФРИЗ кампаний!", msg.ToString());
 
             //Записываем все полученные кол-ва показов в "базу"
-            File.Delete(ciFileName);
-            File.AppendAllLines(ciFileName, campaignImpressions.Select(ci => $"{ci.Key}-{ci.Value}"));
+            File.WriteAllLines(ciFileName, campaignImpressions.Select(ci => $"{ci.Key}-{ci.Value}"));
         }
     }
 }
