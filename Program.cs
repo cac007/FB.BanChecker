@@ -31,7 +31,9 @@ namespace FB.BanChecker
 
         private static void UnhandledExceptionHandler(object sender, UnhandledExceptionEventArgs e)
         {
-            Console.WriteLine("Произошла непредвиденная ошибка:"+e.ExceptionObject);
+            var msg="Произошла непредвиденная ошибка:"+e.ExceptionObject;
+            Console.WriteLine(msg);
+            Logger.Log(msg);
         }
     }
 }
