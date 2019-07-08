@@ -7,7 +7,9 @@ namespace FB.BanChecker
     {
         public static void Log(string msg)
         {
-            File.AppendAllText("Log.txt", $"{DateTime.Now.ToShortDateString()} {DateTime.Now.ToLongTimeString()}{msg}\n");
+            var msgWithDate=$"{DateTime.Now.ToShortDateString()} {DateTime.Now.ToLongTimeString()}{msg}\n";
+            Console.Write(msgWithDate);
+            File.AppendAllText("Log.txt", msgWithDate);
         }
     }
 }

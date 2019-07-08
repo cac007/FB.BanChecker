@@ -18,12 +18,23 @@ namespace FB.BanChecker
             var campaignsToMonitor = new HashSet<string>();
             foreach (var adAccount in adAccounts)
             {
-                var request = new RestRequest($"act_{adAccount}/campaigns", Method.GET);
+                var request = new RestRequest($"act_{adAccount}", Method.GET);
+                request.AddQueryParameter("access_token", accessToken);
+                request.AddQueryParameter("fields", "account_status");
+                var response = restClient.Execute(request);
+                var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                if (json["account_status"].ToString()=="2") //Аккаунт забанен!
+                {
+                    new Mailer().SendEmailNotification($"Аккаунт {adAccount} забанен!","Subj!");
+                    continue;
+                }
+
+                request = new RestRequest($"act_{adAccount}/campaigns", Method.GET);
                 request.AddQueryParameter("access_token", accessToken);
                 request.AddQueryParameter("date_preset", "today");
                 request.AddQueryParameter("effective_status", "['ACTIVE']");
-                var response = restClient.Execute(request);
-                var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                response = restClient.Execute(request);
+                json = (JObject)JsonConvert.DeserializeObject(response.Content);
                 foreach (var d in json["data"])
                 {
                     campaignsToMonitor.Add(d["id"].ToString());
@@ -49,6 +60,11 @@ namespace FB.BanChecker
                 request.AddQueryParameter("fields", "status");
                 var response = restClient.Execute(request);
                 var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                if (json["data"].Count()==0)
+                {
+                    Logger.Log("В кампании {c} нет адсетов! Вероятно и кампании нет)");
+                    continue;
+                }
                 if (json["data"].All(adset=>adset["status"].ToString()=="PAUSED"))
                     continue;
                 
