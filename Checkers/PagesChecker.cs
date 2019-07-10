@@ -1,8 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -11,7 +9,14 @@ namespace FB.BanChecker
 {
     public class PagesChecker
     {
-        public static void Check(string apiAddress, string accessToken)
+        private IMailer _mailer;
+
+        public PagesChecker(IMailer mailer)
+        {
+            _mailer=mailer;
+        }
+
+        public void Check(string apiAddress, string accessToken)
         {
             //Берём все страницы для мониторинга
             var pages = File.ReadAllLines("Pages.txt").ToHashSet();
@@ -59,7 +64,7 @@ namespace FB.BanChecker
 
             //Шлём одно письмо по всем страницам
             if (msg.Length > 0)
-                new Mailer().SendEmailNotification("Некоторые страницы были сняты с публикации!", msg.ToString());
+                _mailer.SendEmailNotification("Некоторые страницы были сняты с публикации!", msg.ToString());
         }
     }
 }

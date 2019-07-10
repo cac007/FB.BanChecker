@@ -10,7 +10,13 @@ namespace FB.BanChecker
 {
     public class FreezeChecker
     {
-        public static void Check(string apiAddress, string accessToken)
+        private IMailer _mailer;
+
+        public FreezeChecker(IMailer mailer)
+        {
+            _mailer=mailer;
+        }
+        public void Check(string apiAddress, string accessToken)
         {
             var restClient = new RestClient(apiAddress);
             //Ищем все работающие кампании
@@ -25,18 +31,22 @@ namespace FB.BanChecker
                 var json = (JObject)JsonConvert.DeserializeObject(response.Content);
                 if (json["account_status"].ToString()=="2") //Аккаунт забанен!
                 {
-                    new Mailer().SendEmailNotification($"Аккаунт {adAccount} забанен!","Subj!");
+                    var banMsg=$"Аккаунт {adAccount} забанен!";
+                    Logger.Log(banMsg);
+                    _mailer.SendEmailNotification(banMsg,"Subj!");
                     continue;
                 }
 
                 request = new RestRequest($"act_{adAccount}/campaigns", Method.GET);
                 request.AddQueryParameter("access_token", accessToken);
                 request.AddQueryParameter("date_preset", "today");
+                request.AddQueryParameter("fields", "name");
                 request.AddQueryParameter("effective_status", "['ACTIVE']");
                 response = restClient.Execute(request);
                 json = (JObject)JsonConvert.DeserializeObject(response.Content);
                 foreach (var d in json["data"])
                 {
+                    Logger.Log($"В аккаунте {adAccount} найдена кампания {d["name"]} c id {d["id"]}");
                     campaignsToMonitor.Add(d["id"].ToString());
                 }
             }
@@ -57,18 +67,32 @@ namespace FB.BanChecker
                 var request = new RestRequest($"{c}/adsets", Method.GET);
                 request.AddQueryParameter("access_token", accessToken);
                 request.AddQueryParameter("date_preset", "today");
-                request.AddQueryParameter("fields", "status");
+                request.AddQueryParameter("fields", "ads{status},status,name");
                 var response = restClient.Execute(request);
                 var json = (JObject)JsonConvert.DeserializeObject(response.Content);
                 if (json["data"].Count()==0)
                 {
-                    Logger.Log("В кампании {c} нет адсетов! Вероятно и кампании нет)");
+                    Logger.Log($"В кампании {c} нет адсетов!");
+                    continue;
+                }
+                if (json["data"].All(adset=>adset["ads"]==null))
+                {
+                    Logger.Log($"В кампании {c} нет объявлений!");
                     continue;
                 }
                 if (json["data"].All(adset=>adset["status"].ToString()=="PAUSED"))
+                {
+                    Logger.Log($"В кампании {c} нет работающих адсетов, все остановлены!");
                     continue;
+                }
+
+                if (json["data"].All(adset=>adset["ads"]["data"].All(ads=>ads["status"].ToString()=="PAUSED")))
+                {
+                    Logger.Log($"В кампании {c} нет работающих объявлений, все остановлены!");
+                    continue;
+                }
                 
-                //Нашли кампанию с работающими адсетами, проверяем показы
+                //Нашли работающую кампанию, проверяем показы
                 request = new RestRequest($"{c}/insights", Method.GET);
                 request.AddQueryParameter("access_token", accessToken);
                 request.AddQueryParameter("date_preset", "today");
@@ -103,7 +127,7 @@ namespace FB.BanChecker
 
             //Шлём одно письмо по всем фризам
             if (msg.Length > 0)
-                new Mailer().SendEmailNotification("Обнаружен ФРИЗ кампаний!", msg.ToString());
+                _mailer.SendEmailNotification("Обнаружен ФРИЗ кампаний!", msg.ToString());
 
             //Записываем все полученные кол-ва показов в "базу"
             File.WriteAllLines(ciFileName, campaignImpressions.Select(ci => $"{ci.Key}-{ci.Value}"));

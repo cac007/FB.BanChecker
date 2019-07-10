@@ -13,6 +13,12 @@ namespace FB.BanChecker
                 .Build();
             var accessToken = config.GetValue<string>("access_token");
             var apiAddress = config.GetValue<string>("fbapi_address");
+            IMailer mailer;
+#if DEBUG
+            mailer=new FakeMailer();
+#else
+            mailer=new Mailer();
+#endif
 
             if (string.IsNullOrEmpty(accessToken))
             {
@@ -20,13 +26,13 @@ namespace FB.BanChecker
                 return;
             }
             if (config.GetValue<bool>("check_domains"))
-                DomainsChecker.Check(apiAddress, accessToken);
+                new DomainsChecker(mailer).Check(apiAddress, accessToken);
             if (config.GetValue<bool>("check_freeze"))
-                FreezeChecker.Check(apiAddress, accessToken);
+                new FreezeChecker(mailer).Check(apiAddress, accessToken);
             if (config.GetValue<bool>("check_ads"))
-                AdsChecker.Check(apiAddress, accessToken);
+                new AdsChecker(mailer).Check(apiAddress, accessToken);
             if (config.GetValue<bool>("check_pages"))
-                PagesChecker.Check(apiAddress, accessToken);
+                new PagesChecker(mailer).Check(apiAddress, accessToken);
         }
 
         private static void UnhandledExceptionHandler(object sender, UnhandledExceptionEventArgs e)

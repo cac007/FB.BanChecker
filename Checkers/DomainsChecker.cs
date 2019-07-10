@@ -5,7 +5,13 @@ namespace FB.BanChecker
 {
     public class DomainsChecker
     {
-        public static void Check(string apiAddress, string accessToken)
+        private readonly IMailer _mailer;
+
+        public DomainsChecker(IMailer mailer)
+        {
+            _mailer = mailer;
+        }
+        public void Check(string apiAddress, string accessToken)
         {
             var restClient = new RestClient(apiAddress);
             var domains = File.ReadAllLines("Domains.txt");
@@ -21,7 +27,7 @@ namespace FB.BanChecker
                 {
                     var msg = $"Domain {d} was banned on Facebook!";
                     Logger.Log(msg);
-                    new Mailer().SendEmailNotification(msg, "Subj!");
+                    _mailer.SendEmailNotification(msg, "Subj!");
                 }
                 else
                 {

@@ -9,7 +9,14 @@ namespace FB.BanChecker
 {
     public class AdsChecker
     {
-        public static void Check(string apiAddress, string accessToken)
+        private readonly IMailer _mailer;
+
+        public AdsChecker(IMailer mailer)
+        {
+            _mailer = mailer;
+        }
+
+        public void Check(string apiAddress, string accessToken)
         {
             var restClient = new RestClient(apiAddress);
             //Ищем все работающие кампании
@@ -57,7 +64,7 @@ namespace FB.BanChecker
             if (msg.Length > 0)
             {
                 Logger.Log(msg.ToString());
-                new Mailer().SendEmailNotification("Некорректный статус у объявлений!", msg.ToString());
+                _mailer.SendEmailNotification("Некорректный статус у объявлений!", msg.ToString());
             }
         }
 
