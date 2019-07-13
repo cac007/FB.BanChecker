@@ -173,11 +173,14 @@ namespace FB.BanChecker
                 var links = new HashSet<string>();
                 foreach (var adCr in activeCreatives)
                 {
-                    if (adCr["object_story_spec"] != null)
+                    var osp = adCr["object_story_spec"];
+                    if (osp != null)
                     {
-                        pages.Add(adCr["object_story_spec"]["page_id"].ToString());
-                        links.Add(
-                            adCr["object_story_spec"]["video_data"]["call_to_action"]["value"]["link"].ToString());
+                        pages.Add(osp["page_id"].ToString());
+                        if (osp["video_data"]!=null) //видеокрео
+                            links.Add(osp["video_data"]["call_to_action"]["value"]["link"].ToString());
+                        else if(osp["link_data"]!=null) //картинка
+                            links.Add(osp["link_data"]["link"].ToString());
                     }
                     else //креатив на PostID
                     {

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
+using System.Text;
 
 namespace FB.BanChecker
 {
@@ -8,6 +9,7 @@ namespace FB.BanChecker
         static void Main(string[] args)
         {
             AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionHandler;
+            Console.OutputEncoding=Encoding.UTF8;
             IConfiguration config = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", true, true)
                 .Build();
