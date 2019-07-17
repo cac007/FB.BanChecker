@@ -73,33 +73,43 @@ namespace FB.BanChecker
 
             var freezeMsgs = new StringBuilder();
             var adsMsgs = new StringBuilder();
-            foreach (var c in campaignsToMonitor.Keys)
+            foreach (var kvp in campaignsToMonitor)
             {
+                var c = kvp.Key;
+                //Сначала получаем имя кампании
+                var request = new RestRequest(c, Method.GET);
+                request.AddQueryParameter("access_token", _accessToken);
+                request.AddQueryParameter("fields", "name");
+                var response = _restClient.Execute(request);
+                var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                var cname = json["name"].ToString();
+                Logger.Log($"Начинаем проверку кампании {cname} в аккаунте {kvp.Value}...");
+
                 //Сначала чекаем, есть ли работающие адсеты в кампании!
-                var request = new RestRequest($"{c}/adsets", Method.GET);
+                request = new RestRequest($"{c}/adsets", Method.GET);
                 request.AddQueryParameter("access_token", _accessToken);
                 request.AddQueryParameter("date_preset", "today");
                 request.AddQueryParameter("fields", "ads{status},status,name");
-                var response = _restClient.Execute(request);
-                var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                response = _restClient.Execute(request);
+                json = (JObject)JsonConvert.DeserializeObject(response.Content);
                 if (json["data"].Count() == 0)
                 {
-                    Logger.Log($"В кампании {c} нет адсетов!");
+                    Logger.Log($"В кампании {cname} нет адсетов!");
                     continue;
                 }
                 if (json["data"].All(adset => adset["ads"] == null))
                 {
-                    Logger.Log($"В кампании {c} нет объявлений!");
+                    Logger.Log($"В кампании {cname} нет объявлений!");
                     continue;
                 }
                 if (json["data"].All(adset => adset["status"].ToString() == "PAUSED"))
                 {
-                    Logger.Log($"В кампании {c} нет работающих адсетов, все остановлены!");
+                    Logger.Log($"В кампании {cname} нет работающих адсетов, все остановлены!");
                     continue;
                 }
                 if (json["data"].All(adset => adset["ads"]["data"].All(ads => ads["status"].ToString() == "PAUSED")))
                 {
-                    Logger.Log($"В кампании {c} нет работающих объявлений, все остановлены!");
+                    Logger.Log($"В кампании {cname} нет работающих объявлений, все остановлены!");
                     continue;
                 }
 
@@ -159,7 +169,7 @@ namespace FB.BanChecker
 
                     }
                 }
-                Logger.Log($"Проверили все объявы в кампании {c}.");
+                Logger.Log($"Проверили все статусы объяв в кампании {cname}.");
 
                 //Проверяем все креативы кампании, вычленяем из них ссылки и страницы
                 request = new RestRequest($"act_{campaignsToMonitor[c]}/adcreatives", Method.GET);
@@ -177,9 +187,9 @@ namespace FB.BanChecker
                     if (osp != null)
                     {
                         pages.Add(osp["page_id"].ToString());
-                        if (osp["video_data"]!=null) //видеокрео
+                        if (osp["video_data"] != null) //видеокрео
                             links.Add(osp["video_data"]["call_to_action"]["value"]["link"].ToString());
-                        else if(osp["link_data"]!=null) //картинка
+                        else if (osp["link_data"] != null) //картинка
                             links.Add(osp["link_data"]["link"].ToString());
                     }
                     else //креатив на PostID
@@ -189,6 +199,17 @@ namespace FB.BanChecker
                         request.AddQueryParameter("fields", "call_to_action");
                         response = _restClient.Execute(request);
                         json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                        if (json["error"] != null)
+                        {
+                            //крео отлетело к праотцам!
+                            if (json["error"]["message"].ToString().Contains("does not exist"))
+                            {
+                                var postIdMsg=$"Объявление на PostID {adCr["object_story_id"]} из кампании {cname} аккаунта {kvp.Value} отлетело к праотцам! Мир его праху...";
+                                Logger.Log(postIdMsg);
+                                adsMsgs.AppendLine(postIdMsg);
+                                continue;
+                            } 
+                        }
                         links.Add(json["call_to_action"]["value"]["link"].ToString());
                         pages.Add(adCr["object_story_id"].ToString().Split('_')[0]);
                     }
@@ -204,7 +225,7 @@ namespace FB.BanChecker
                     CheckLink(l);
                 }
 
-                Logger.Log($"Проверили все креативы в кампании {c}.");
+                Logger.Log($"Закончили проверку кампании {cname} в аккаунте {kvp.Value}.");
             }
 
             if (adsMsgs.Length > 0)
