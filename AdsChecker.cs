@@ -35,6 +35,7 @@ namespace FB.BanChecker
                 request.AddQueryParameter("fields", "account_status");
                 var response = _restClient.Execute(request);
                 var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                ErrorChecker.HasErrorsInResponse(json,true);
                 if (json["account_status"].ToString() == "2") //Аккаунт забанен!
                 {
                     var banMsg = $"Аккаунт {adAccount} забанен!";
@@ -50,6 +51,7 @@ namespace FB.BanChecker
                 request.AddQueryParameter("effective_status", "['ACTIVE']");
                 response = _restClient.Execute(request);
                 json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                ErrorChecker.HasErrorsInResponse(json,true);
                 foreach (var d in json["data"])
                 {
                     Logger.Log($"В аккаунте {adAccount} найдена кампания {d["name"]} c id {d["id"]}");
@@ -82,6 +84,7 @@ namespace FB.BanChecker
                 request.AddQueryParameter("fields", "name");
                 var response = _restClient.Execute(request);
                 var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                ErrorChecker.HasErrorsInResponse(json,true);
                 var cname = json["name"].ToString();
                 Logger.Log($"Начинаем проверку кампании {cname} в аккаунте {kvp.Value}...");
 
@@ -92,6 +95,7 @@ namespace FB.BanChecker
                 request.AddQueryParameter("fields", "ads{status},status,name");
                 response = _restClient.Execute(request);
                 json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                ErrorChecker.HasErrorsInResponse(json,true);
                 if (json["data"].Count() == 0)
                 {
                     Logger.Log($"В кампании {cname} нет адсетов!");
@@ -121,41 +125,45 @@ namespace FB.BanChecker
 
                 response = _restClient.Execute(request);
                 json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                ErrorChecker.HasErrorsInResponse(json,true);
                 if (json["data"] == null || !json["data"].Any())
                 {
-                    Logger.Log($"Похоже, что в кампании {cname} аккаунта {kvp.Value} ещё не начался открут, хотя кампания активна!");
-                    continue;
-                }
-                var accName = json["data"][0]["account_name"].ToString();
-                var campaignName = json["data"][0]["campaign_name"].ToString();
-                var imp = int.Parse(json["data"][0]["impressions"].ToString());
-                //если уже получали кол-во показов у этой кампании
-                if (campaignImpressions.ContainsKey(c))
-                {
-                    if (campaignImpressions[c] != imp)
-                    {
-                        campaignImpressions[c] = imp;
-                        Logger.Log($"Кампания {campaignName} крутит, всё с ней хорошо!");
-                    }
-                    else
-                    {
-                        //ФРИЗ! Шлём уведомление об этом!
-                        var freezeMsg = $"Фриз кампании {campaignName} в аккаунте {accName}!";
-                        freezeMsgs.AppendLine(freezeMsg);
-                        Logger.Log(freezeMsg);
-                    }
+                    Logger.Log($"!!!Похоже, что в кампании {cname} аккаунта {kvp.Value} ещё не начался открут, хотя кампания активна!");
                 }
                 else
                 {
-                    campaignImpressions.Add(c, imp);
+                    var accName = json["data"][0]["account_name"].ToString();
+                    var campaignName = json["data"][0]["campaign_name"].ToString();
+                    var imp = int.Parse(json["data"][0]["impressions"].ToString());
+                    //если уже получали кол-во показов у этой кампании
+                    if (campaignImpressions.ContainsKey(c))
+                    {
+                        if (campaignImpressions[c] != imp)
+                        {
+                            campaignImpressions[c] = imp;
+                            Logger.Log($"Кампания {campaignName} крутит, всё с ней хорошо!");
+                        }
+                        else
+                        {
+                            //ФРИЗ! Шлём уведомление об этом!
+                            var freezeMsg = $"Фриз кампании {campaignName} в аккаунте {accName}!";
+                            freezeMsgs.AppendLine(freezeMsg);
+                            Logger.Log(freezeMsg);
+                        }
+                    }
+                    else
+                    {
+                        campaignImpressions.Add(c, imp);
+                    }
                 }
 
                 //Проверяем все объявления кампании
                 request = new RestRequest($"{c}/ads", Method.GET);
                 request.AddQueryParameter("access_token", _accessToken);
-                request.AddQueryParameter("fields", "account_id,creative,campaign{name},effective_status,issues_info");
+                request.AddQueryParameter("fields", "account_id,creative,campaign{name},effective_status,issues_info,status");
                 response = _restClient.Execute(request);
                 json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                ErrorChecker.HasErrorsInResponse(json,true);
 
                 var adCreatives = new HashSet<string>();
                 foreach (var ad in json["data"])
@@ -182,6 +190,7 @@ namespace FB.BanChecker
                 request.AddQueryParameter("fields", "object_story_spec,object_story_id");
                 response = _restClient.Execute(request);
                 json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                ErrorChecker.HasErrorsInResponse(json,true);
 
                 var activeCreatives = json["data"].Where(j => adCreatives.Contains(j["id"].ToString())).ToList();
                 var pages = new HashSet<string>();
@@ -204,7 +213,7 @@ namespace FB.BanChecker
                         request.AddQueryParameter("fields", "call_to_action");
                         response = _restClient.Execute(request);
                         json = (JObject)JsonConvert.DeserializeObject(response.Content);
-                        if (json["error"] != null)
+                        if (ErrorChecker.HasErrorsInResponse(json))
                         {
                             //крео отлетело к праотцам!
                             if (json["error"]["message"].ToString().Contains("does not exist"))
@@ -274,6 +283,7 @@ namespace FB.BanChecker
             request.AddQueryParameter("fields", "name,is_published,access_token");
             var response = _restClient.Execute(request);
             var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+            ErrorChecker.HasErrorsInResponse(json,true);
             var msg = new StringBuilder();
             foreach (var p in json["data"])
             {
@@ -292,7 +302,7 @@ namespace FB.BanChecker
                 request.AddParameter("is_published", "true");
                 response = _restClient.Execute(request);
                 var publishJson = (JObject)JsonConvert.DeserializeObject(response.Content);
-                if (publishJson["error"] != null)
+                if (ErrorChecker.HasErrorsInResponse(publishJson))
                 {
                     //невозможно опубликовать страницу, вероятно, она забанена!
                     var pageMsg = $"Страница {p["name"]} не опубликована и, вероятно, забанена!";
