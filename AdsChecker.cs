@@ -121,6 +121,11 @@ namespace FB.BanChecker
 
                 response = _restClient.Execute(request);
                 json = (JObject)JsonConvert.DeserializeObject(response.Content);
+                if (json["data"] == null || !json["data"].Any())
+                {
+                    Logger.Log($"Похоже, что в кампании {cname} аккаунта {kvp.Value} ещё не начался открут, хотя кампания активна!");
+                    continue;
+                }
                 var accName = json["data"][0]["account_name"].ToString();
                 var campaignName = json["data"][0]["campaign_name"].ToString();
                 var imp = int.Parse(json["data"][0]["impressions"].ToString());
