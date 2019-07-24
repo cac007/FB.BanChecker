@@ -9,7 +9,7 @@ namespace FB.BanChecker
         static void Main(string[] args)
         {
             AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionHandler;
-            Console.OutputEncoding=Encoding.UTF8;
+            Console.OutputEncoding = Encoding.UTF8;
             IConfiguration config = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", true, true)
                 .Build();
@@ -27,7 +27,9 @@ namespace FB.BanChecker
                 Console.WriteLine("Не указан access_token!");
                 return;
             }
-            new AdsChecker(apiAddress,accessToken,mailer).CheckAds();
+
+            var nav = new Navigator(accessToken, apiAddress);
+            new AdsChecker(apiAddress, accessToken, mailer, nav).CheckAds();
         }
 
         private static void UnhandledExceptionHandler(object sender, UnhandledExceptionEventArgs e)
