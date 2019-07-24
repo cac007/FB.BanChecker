@@ -149,7 +149,7 @@ namespace FB.BanChecker
                     if (!adCreatives.Contains(ad["creative"]["id"].ToString()))
                         adCreatives.Add(ad["creative"]["id"].ToString());
                     //Получили ID поста, теперь сохраним все данные по негативу
-                    var storyId = ad["creative"]["effective_story_id"].ToString();
+                    var storyId = ad["creative"]["effective_object_story_id"].ToString();
                     SavePostFeedback(storyId);
 
                     var status = ad["effective_status"].ToString();
