@@ -171,6 +171,7 @@ namespace FB.BanChecker
         {
             if (_accByNameDict.Count == 0||!_accByNameDict.ContainsKey(name))
             {
+                _accByNameDict.Clear();
                 var bms = GetAllBms();
                 foreach (var bm in bms)
                 {
