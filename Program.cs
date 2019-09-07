@@ -1,19 +1,19 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace FB.BanChecker
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionHandler;
             Console.OutputEncoding = Encoding.UTF8;
             IConfiguration config = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", true, true)
                 .Build();
-            var accessToken = config.GetValue<string>("access_token");
             var apiAddress = config.GetValue<string>("fbapi_address");
             IMailer mailer;
 #if DEBUG
@@ -22,14 +22,7 @@ namespace FB.BanChecker
             mailer=new Mailer();
 #endif
 
-            if (string.IsNullOrEmpty(accessToken))
-            {
-                Console.WriteLine("Не указан access_token!");
-                return;
-            }
-
-            var nav = new Navigator(accessToken, apiAddress);
-            new AdsChecker(apiAddress, accessToken, mailer, nav).CheckAds();
+            await new AdsChecker(apiAddress, mailer).CheckAdsAsync();
         }
 
         private static void UnhandledExceptionHandler(object sender, UnhandledExceptionEventArgs e)

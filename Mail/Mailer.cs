@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System.Net;
 using System.Net.Mail;
+using System.Threading.Tasks;
 
 namespace FB.BanChecker
 {
@@ -14,7 +15,7 @@ namespace FB.BanChecker
                 .Build();
         }
 
-        public void SendEmailNotification(string subj, string msg)
+        public async Task SendEmailNotificationAsync(string subj, string msg)
         {
             using (var message = new MailMessage())
             {
@@ -31,7 +32,7 @@ namespace FB.BanChecker
                         _config.GetValue<string>("mail_login"),
                         _config.GetValue<string>("mail_password"));
                     client.EnableSsl = _config.GetValue<bool>("mail_usessl");
-                    client.Send(message);
+                    await client.SendMailAsync(message);
                 }
             }
         }

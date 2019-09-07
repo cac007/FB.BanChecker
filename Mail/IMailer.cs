@@ -1,7 +1,9 @@
-﻿namespace FB.BanChecker
+﻿using System.Threading.Tasks;
+
+namespace FB.BanChecker
 {
     public interface IMailer
     {
-        void SendEmailNotification(string subj, string msg);
+        Task SendEmailNotificationAsync(string subj, string msg);
     }
 }

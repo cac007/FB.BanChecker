@@ -5,59 +5,55 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace FB.BanChecker
 {
     public class Navigator
     {
-        private string _accessToken;
-        private readonly RestClient _restClient;
-        private readonly Dictionary<string,string> _accByNameDict = new Dictionary<string, string>();
-        private const string _adAccountsFileName="accountnames.txt";
-        public Navigator(string accessToken, string apiAddress)
+        private readonly Dictionary<string, string> _accByNameDict = new Dictionary<string, string>();
+        private readonly RequestExecutor _re;
+        private const string _adAccountsFileName = "accountnames.txt";
+        public Navigator(RequestExecutor re)
         {
-            _accessToken = accessToken;
-            _restClient = new RestClient(apiAddress);
-            if (File.Exists(_adAccountsFileName))
-            {
-                var lines=File.ReadAllLines(_adAccountsFileName);
-                foreach(var l in lines)
-                {
-                    var spl=l.Split('-');
-                    _accByNameDict.Add(spl[0],spl[1]);
-                }
-            }
+            _re = re;
         }
 
-        public string GetFanPageName(string pageId)
+        public async Task<string> GetFanPageNameAsync(string pageId)
         {
             var request = new RestRequest(pageId, Method.GET);
-            request.AddQueryParameter("access_token", _accessToken);
             request.AddQueryParameter("fields", "name,is_published,access_token");
-            var response = _restClient.Execute(request);
-            var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+            var json = await _re.ExecuteRequestAsync(request);
             return json["name"].ToString();
         }
 
-        public string GetFanPageBackedInsagramAccount(string pageId)
+        public async Task<string> GetFanPageBackedInsagramAccountAsync(string pageId)
         {
             var request = new RestRequest(pageId, Method.GET);
-            request.AddQueryParameter("access_token", _accessToken);
-            request.AddQueryParameter("fields", "name,page_backed_instagram_accounts");
-            var response = _restClient.Execute(request);
-            var json = (JObject)JsonConvert.DeserializeObject(response.Content);
-            return json["page_backed_instagram_accounts"]["data"][0]["id"].ToString();
+            request.AddQueryParameter("fields", "access_token");
+            var json = await _re.ExecuteRequestAsync(request);
+            var token = json["access_token"].ToString();
+            request = new RestRequest($"{pageId}/page_backed_instagram_accounts", Method.GET);
+            request.AddQueryParameter("access_token", token);
+            json = await _re.ExecuteRequestAsync(request);
+            if (!json["data"].Any())
+            {
+                request = new RestRequest($"{pageId}/page_backed_instagram_accounts", Method.POST);
+                request.AddParameter("access_token", token);
+                json = await _re.ExecuteRequestAsync(request);
+                return json["id"].ToString();
+            }
+            return json["data"][0]["id"].ToString();
         }
 
-        public string SelectFanPage()
+        public async Task<string> SelectFanPageAsync()
         {
             var request = new RestRequest($"me/accounts", Method.GET);
-            request.AddQueryParameter("access_token", _accessToken);
             request.AddQueryParameter("fields", "name,is_published,access_token");
             request.AddQueryParameter("type", "page");
-            var response = _restClient.Execute(request);
-            var json = (JObject)JsonConvert.DeserializeObject(response.Content);
-            var pages = json["data"].ToList();
+            var json = await _re.ExecuteRequestAsync(request);
+
+            var pages = json["data"].OrderBy(p => p["name"].ToString()).ToList();
             for (int i = 0; i < pages.Count; i++)
             {
                 var p = pages[i];
@@ -88,8 +84,7 @@ namespace FB.BanChecker
                     request = new RestRequest(selectedPage["id"].ToString(), Method.POST);
                     request.AddParameter("access_token", selectedPage["access_token"].ToString());
                     request.AddParameter("is_published", "true");
-                    response = _restClient.Execute(request);
-                    var publishJson = (JObject)JsonConvert.DeserializeObject(response.Content);
+                    var publishJson = await _re.ExecuteRequestAsync(request, false);
                     if (publishJson["error"] != null)
                     {
                         //невозможно опубликовать страницу, вероятно, она забанена!
@@ -109,9 +104,9 @@ namespace FB.BanChecker
             return selectedPage["id"].ToString();
         }
 
-        public string SelectBusinessManager()
+        public async Task<string> SelectBusinessManagerAsync()
         {
-            var bms = GetAllBms();
+            var bms = await GetAllBmsAsync();
 
             for (int i = 0; i < bms.Count; i++)
             {
@@ -126,27 +121,25 @@ namespace FB.BanChecker
                 Console.Write("Выберите БМ, введя его номер, и нажмите Enter:");
                 var readIndex = Console.ReadLine();
                 goodRes = int.TryParse(readIndex, out index);
-                if (index > bms.Count - 1) goodRes = false;
+                if (index > bms.Count) goodRes = false;
             }
             while (!goodRes);
-            return bms[index]["id"].ToString();
+            return bms[index - 1]["id"].ToString();
         }
 
 
-        public string GetAdAccountsBusinessManager(string acc)
+        public async Task<string> GetAdAccountsBusinessManagerAsync(string acc)
         {
             var req = new RestRequest($"act_{acc}", Method.GET);
-            req.AddQueryParameter("access_token", _accessToken);
             req.AddQueryParameter("fields", "business");
-            var resp = _restClient.Execute(req);
-            var respJson = (JObject)JsonConvert.DeserializeObject(resp.Content);
+            var respJson = await _re.ExecuteRequestAsync(req);
             ErrorChecker.HasErrorsInResponse(respJson, true);
             return respJson["business"]["id"].ToString();
         }
 
-        public string SelectAdAccount(string bmid, bool includeBanned = false)
+        public async Task<string> SelectAdAccountAsync(string bmid, bool includeBanned = false)
         {
-            var accounts = GetBmsAdAccounts(bmid, includeBanned);
+            var accounts = await GetBmsAdAccountsAsync(bmid, includeBanned);
 
             for (int i = 0; i < accounts.Count; i++)
             {
@@ -167,46 +160,47 @@ namespace FB.BanChecker
             return accounts[index]["id"].ToString();
         }
 
-        public string GetAdAccountByName(string name)
+        public async Task<string> GetAdAccountByNameAsync(string name)
         {
-            if (_accByNameDict.Count == 0||!_accByNameDict.ContainsKey(name))
+            if (_accByNameDict.Count == 0 || !_accByNameDict.ContainsKey(name))
             {
                 _accByNameDict.Clear();
-                var bms = GetAllBms();
+                var bms = await GetAllBmsAsync();
                 foreach (var bm in bms)
                 {
-                    var adAccounts = GetBmsAdAccounts(bm["id"].ToString(),true);
+                    var adAccounts = await GetBmsAdAccountsAsync(bm["id"].ToString(), true);
                     adAccounts.ForEach(acc => _accByNameDict.Add(acc["name"].ToString(), acc["id"].ToString()));
                 }
-                File.WriteAllLines(_adAccountsFileName,_accByNameDict.Select(kvp=>$"{kvp.Key}-{kvp.Value}"));
+                await File.WriteAllLinesAsync(
+                    _adAccountsFileName, _accByNameDict.Select(kvp => $"{kvp.Key}-{kvp.Value}"));
             }
             if (_accByNameDict.ContainsKey(name))
-                return _accByNameDict[name].Substring(4);
-            throw new Exception("Не найден аккаунт по имени "+name);
+                return _accByNameDict[name];
+            return string.Empty;
         }
 
-        private List<JToken> GetAllBms()
+        private async Task<List<JToken>> GetAllBmsAsync()
         {
             var request = new RestRequest($"me/businesses", Method.GET);
-            request.AddQueryParameter("access_token", _accessToken);
-            var response = _restClient.Execute(request);
-            var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+            var json = await _re.ExecuteRequestAsync(request);
             var bms = json["data"].ToList();
             return bms;
         }
 
-        private List<JToken> GetBmsAdAccounts(string bmid, bool includeBanned = false)
+        public async Task<List<JToken>> GetBmsAdAccountsAsync(string bmid, bool includeBanned = false)
         {
-            var request = new RestRequest($"{bmid}/owned_ad_accounts", Method.GET);
-            request.AddQueryParameter("access_token", _accessToken);
+            var request = new RestRequest($"{bmid}/client_ad_accounts", Method.GET);
             request.AddQueryParameter("fields", "name,account_status");
-            var response = _restClient.Execute(request);
-            var json = (JObject)JsonConvert.DeserializeObject(response.Content);
+            var json = await _re.ExecuteRequestAsync(request);
             var accounts = json["data"].ToList();
+            request = new RestRequest($"{bmid}/owned_ad_accounts", Method.GET);
+            request.AddQueryParameter("fields", "name,account_status");
+            json = await _re.ExecuteRequestAsync(request);
+            accounts.AddRange(json["data"].ToList());
             //Исключаем забаненные
-            if (!includeBanned) accounts = accounts.Where(acc => acc["account_status"].ToString() != "2").ToList();
+            if (!includeBanned)
+                accounts = accounts.Where(acc => acc["account_status"].ToString() != "2").ToList();
             return accounts;
         }
-
     }
 }
