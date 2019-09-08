@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using RestSharp;
+﻿using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,7 +11,6 @@ namespace FB.BanChecker
     {
         private readonly string _apiAddress;
         private readonly IMailer _mailer;
-        private readonly Navigator _nav;
         private const string _ciFileName = "CampaignImpressions.txt";
 
         public AdsChecker(string apiAddress, IMailer mailer)
@@ -25,7 +22,7 @@ namespace FB.BanChecker
         public async Task CheckAdsAsync()
         {
             var campaignImpressions = GetCampaignsImpressions();
-            var accountRecords = await File.ReadAllLinesAsync("accounts.txt");
+            var accountRecords = await File.ReadAllLinesAsync(@"..\accounts.txt");
             foreach (var record in accountRecords)
             {
                 var ar = new AccountRecord(record);
@@ -40,7 +37,7 @@ namespace FB.BanChecker
                 var banned = await ff.CheckIfAccountIsBanned(ar.Account);
                 if (banned)
                 {
-                    var banMsg = $"Аккаунт {ar.Account} забанен!";
+                    var banMsg = $"{ar.Comment}: Аккаунт {ar.Account} забанен!";
                     Logger.Log(banMsg);
                     await _mailer.SendEmailNotificationAsync(banMsg, "Subj!");
                     Logger.Log($"Проверка записи {ar.Comment} закончена.");
