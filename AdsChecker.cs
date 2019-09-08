@@ -22,7 +22,7 @@ namespace FB.BanChecker
         public async Task CheckAdsAsync()
         {
             var campaignImpressions = GetCampaignsImpressions();
-            var accountRecords = await File.ReadAllLinesAsync(@"../accounts.txt");
+            var accountRecords = await File.ReadAllLinesAsync(Path.GetFullPath(@"../accounts.txt"));
             foreach (var record in accountRecords)
             {
                 var ar = new AccountRecord(record);
@@ -103,7 +103,18 @@ namespace FB.BanChecker
                             adCreatives.Add(creoId);
                         //Получили ID поста, теперь сохраним все данные по негативу
                         var storyId = ad["creative"]["effective_object_story_id"].ToString();
-                        await ff.SavePostFeedbackAsync(storyId);
+                        var postFeedback=await ff.GetPostFeedbackAsync(storyId);
+                        if (postFeedback.ToString().Contains("does not exist"))
+                        {
+                            var msg=$"Крео {storyId} отлетело к праотцам! Перезаливай!";
+                            Logger.Log(msg);
+                            mailMessage.AppendLine(msg);
+                        }
+                        else
+                        {
+                            ErrorChecker.HasErrorsInResponse(json, true);
+                            await File.WriteAllTextAsync($"{storyId}.json", json.ToString());
+                        }
 
                         var status = ad["effective_status"].ToString();
                         if (status == "DISAPPROVED")

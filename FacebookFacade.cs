@@ -118,13 +118,11 @@ namespace FB.BanChecker
             return await _re.ExecuteRequestAsync(request);
         }
 
-        public async Task SavePostFeedbackAsync(string storyId)
+        public async Task<JObject> GetPostFeedbackAsync(string storyId)
         {
             var request = new RestRequest($"{storyId}/insights", Method.GET);
             request.AddQueryParameter("metric", "post_negative_feedback_by_type,post_reactions_by_type_total");
-            var json = await _re.ExecuteRequestAsync(request);
-            ErrorChecker.HasErrorsInResponse(json, true);
-            await File.WriteAllTextAsync($"{storyId}.json", json.ToString());
+            return await _re.ExecuteRequestAsync(request);
         }
 
         public async Task<bool> CheckIfPageIsBannedAsync(string pageName)
