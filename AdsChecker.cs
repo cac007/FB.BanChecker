@@ -22,7 +22,7 @@ namespace FB.BanChecker
         public async Task CheckAdsAsync()
         {
             var campaignImpressions = GetCampaignsImpressions();
-            var accountRecords = await File.ReadAllLinesAsync(@"..\accounts.txt");
+            var accountRecords = await File.ReadAllLinesAsync(@"../accounts.txt");
             foreach (var record in accountRecords)
             {
                 var ar = new AccountRecord(record);
@@ -154,7 +154,7 @@ namespace FB.BanChecker
                 //Шлём одно письмо по всем фризам
                 if (mailMessage.Length > 0)
                 {
-                    mailMessage.Insert(0, "При проверке записи {ar.Comment} возникли ошибки:");
+                    mailMessage.Insert(0, $"При проверке записи {ar.Comment} возникли ошибки:");
                     await _mailer.SendEmailNotificationAsync(
                         $"Обнаружены ошибки в акке {ar.Account}", mailMessage.ToString());
                 }
